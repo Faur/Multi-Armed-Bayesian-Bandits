@@ -26,8 +26,7 @@ def run(env, agents):
 def runs(num_runs, env, agents):
     rewards = []
     for i in range(num_runs):
-        if (i+1)%100==0:
-            print('\rrun', i, 'of', num_runs, end='')
+        print('\rrun', i, 'of', num_runs, end='')
         rewards.append(run(env, agents))
 
     rewards = np.array(rewards)
@@ -37,11 +36,11 @@ def runs(num_runs, env, agents):
 
 k = 2
 max_steps = 500
-num_episodes = 500
-env = KBandit(k, max_steps=max_steps)
+num_episodes = 5000
+env = KBandit(k, max_steps=max_steps, alpha=10, beta=40)
 
-agents = [OptimalAgent(env), RandomAgent(k), FreqUCB(k)]
-agents_names = ['Optimal', 'Random', 'FreqUCB']
+agents = [OptimalAgent(env), RandomAgent(k), FreqUCB(k), BayesUCB(k, max_steps), ThompsonSampling(k, max_steps)]
+agents_names = ['Optimal', 'Random', 'FreqUCB', 'BayesUCB', 'ThompsonSampling']
 
 rewards = runs(num_episodes, env, agents)
 
@@ -59,5 +58,13 @@ plt.figure()
 for i in range(len(agents)-1):
     plt.plot(np.cumsum(rewards[0] - rewards[i+1]), label=agents_names[i+1]+' regret')
 
+plt.legend()
+plt.show()
+
+	
+plt.figure()
+for i in range(len(agents)-1):
+    one_step_diff = np.cumsum(rewards[0] - rewards[i+1])[1:] - np.cumsum(rewards[0] - rewards[i+1])[:-1]
+    plt.plot(one_step_diff, label=agents_names[i+1]+' regret, diff')
 plt.legend()
 plt.show()
