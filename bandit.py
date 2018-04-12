@@ -20,10 +20,12 @@ class KBandit():
         self.cur_step = 0
         self._theta = self.dist.rvs(self.k)
         return None, 0, False, None
-        
+
     def _draw(self):
-        self._reward_table = (np.random.uniform(size=self.k) < self._theta).astype(int)
-    
+        draws = np.random.uniform(size=self.k)
+        # print(draws)
+        self._reward_table = (draws < self._theta).astype(int)
+
     def optimal_action(self):
         return np.argmax(self._theta)
     
