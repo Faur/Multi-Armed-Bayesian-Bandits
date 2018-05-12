@@ -25,7 +25,7 @@ class FreqUCB():
     def __init__(self, k):
         self.k = k
         self.reset()
-        
+
     def reset(self):
         self.steps = 0
         self.means = np.zeros(self.k)
@@ -62,6 +62,9 @@ class BayesUCB():
     def compute_ab(self, i):
         a = self.prior_param[0]+self.post_param[i]
         b = self.prior_param[1]+self.draws[i]-self.post_param[i]
+        assert a > 0, 'a = {}, prior {}, post {}'.format(a, self.prior_param[0], self.post_param[i])
+        assert b > 0, 'b = {}, prior {}, post {}'.format(b, self.prior_param[1], self.draws[i]-self.post_param[i])
+        # print(a,b)
         return a, b
 
     @property
@@ -88,6 +91,33 @@ class BayesUCB():
         self.post_param[action] += reward
         self.draws[action] += 1
 
+class HierarchicalBayesUCB(BayesUCB):    
+    @property
+    def prior_param(self):
+        u = np.mean(self.post_param/self.draws)
+        v = np.var(self.post_param/self.draws)
+        u = u if u != 1 else u+1e-10
+        v = v if v != 0 else 1e-10
+        assert v > 0, 'Variance is ' + str(v)
+        
+        b = u*(1-u)**2/v - (1-u)
+        a = u*b/(1-u)
+
+        eps = 1e-10
+        if a <= eps: a = eps
+        if b <= eps: b = eps
+
+        assert b > 0, 'b = {}, u {}, v {}'.format(b, u, v)
+        assert a > 0, 'a = {}, u {}, v {}'.format(a, u, v)
+        return [a, b]
+
+    def action(self):
+        self.t += 1
+        if self.t <= self.k:
+            # first pick each arm to avoid zero variance
+            return (self.t-1)
+        return np.argmax(self.values)
+
 class ThompsonSampling(BayesUCB):
     @property
     def values(self):
@@ -97,28 +127,6 @@ class ThompsonSampling(BayesUCB):
             samples.append(beta_dist(a,b).rvs())
         return samples
 
-class HierarchicalBayesUCB(BayesUCB):    
-    def __init__(self, k, n, c=0):
-        self.k = k
-        self.n = n
-        self.c = c
-        
-    @property
-    def prior_param(self):
-        u = np.mean(self.post_param/self.draws)
-        v = np.var(self.post_param/self.draws)
-        if v == 0:
-            v += 0.5**2
-        assert v > 0, 'Variance is ' + str(v)
-        
-        beta = u*(1-u)**2/v - (1-u)
-        alpha = u*beta/(1-u)
-        return [alpha, beta]
-
-    def action(self):
-        self.t += 1
-        if self.t <= self.k:
-            # first pick each arm to avoid zero variance
-            return (self.t-1)
-        return np.argmax(self.values)
-
+class HierarchicalThompsonSampling(HierarchicalBayesUCB, ThompsonSampling):
+    """ Watch out for deadly diamond of death inheritance."""
+    pass
