@@ -1,3 +1,5 @@
+## agents.py 
+
 import numpy as np
 from scipy.stats import beta as beta_dist
 
